@@ -126,6 +126,30 @@ rss:
     - id: "yahoo-finance"
       name: "雅虎财经"
       url: "https://finance.yahoo.com/news/rssindex"
+      
+     - id: "google-news-amazon"
+      name: "Google News - Amazon Seller"
+      url: "https://news.google.com/rss/search?q=amazon+seller&hl=en-US&gl=US&ceid=US:en"
+
+    - id: "reddit-amazonseller"
+      name: "Reddit - Amazon Seller"
+      url: "https://www.reddit.com/r/AmazonSeller.rss"
+
+    - id: "reddit-ecommerce"
+      name: "Reddit - Ecommerce"
+      url: "https://www.reddit.com/r/ecommerce.rss"
+
+    - id: "anthropic-news"
+      name: "Anthropic 官方博客"
+      url: "https://www.anthropic.com/rss.xml"
+
+    - id: "techcrunch-ai"
+      name: "TechCrunch AI"
+      url: "https://techcrunch.com/category/artificial-intelligence/feed/"
+
+    - id: "theverge-ai"
+      name: "The Verge AI"
+      url: "https://www.theverge.com/ai-artificial-intelligence/rss/index.xml"
 
     # 自定义源示例
     # - id: "custom-feed"
