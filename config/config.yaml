@@ -113,19 +113,38 @@ rss:
   # - 正整数：覆盖全局设置，只推送此天数内的文章
   # - 0：禁用此频道的新鲜度过滤，推送所有文章
   feeds:
-    - id: "hacker-news"
-      name: "Hacker News"
-      url: "https://hnrss.org/frontpage"
+      - id: "hacker-news"
+        name: "Hacker News"
+        url: "https://hnrss.org/frontpage"
 
-    - id: "ruanyifeng"
-      name: "阮一峰的网络日志"
-      url: "http://www.ruanyifeng.com/blog/atom.xml"
-      enabled: false                  # 禁用
-      # max_age_days: 3               # 示例：推送 3 天内的文章（更新较慢的博客）
-     
-    - id: "yahoo-finance"
-      name: "雅虎财经"
-      url: "https://finance.yahoo.com/news/rssindex"
+      - id: "yahoo-finance"
+        name: "雅虎财经"
+        url: "https://finance.yahoo.com/news/rssindex"
+
+      - id: "google-news-amazon"
+        name: "Google News - Amazon Seller"
+        url:
+  "https://news.google.com/rss/search?q=amazon+seller&hl=en-US&gl=US&ceid=US:en"
+
+      - id: "reddit-amazonseller"
+        name: "Reddit - Amazon Seller"
+        url: "https://www.reddit.com/r/AmazonSeller.rss"
+
+      - id: "reddit-ecommerce"
+        name: "Reddit - Ecommerce"
+        url: "https://www.reddit.com/r/ecommerce.rss"
+
+      - id: "anthropic-news"
+        name: "Anthropic 官方博客"
+        url: "https://www.anthropic.com/rss.xml"
+
+      - id: "techcrunch-ai"
+        name: "TechCrunch AI"
+        url: "https://techcrunch.com/category/artificial-intelligence/feed/"
+
+      - id: "theverge-ai"
+        name: "The Verge AI"
+        url: "https://www.theverge.com/ai-artificial-intelligence/rss/index.xml"
 
     # 自定义源示例
     # - id: "custom-feed"
