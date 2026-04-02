@@ -123,8 +123,7 @@ rss:
 
       - id: "google-news-amazon"
         name: "Google News - Amazon Seller"
-        url:
-  "https://news.google.com/rss/search?q=amazon+seller&hl=en-US&gl=US&ceid=US:en"
+        url: "https://news.google.com/rss/search?q=amazon+seller&hl=en-US&gl=US&ceid=US:en"
 
       - id: "reddit-amazonseller"
         name: "Reddit - Amazon Seller"
