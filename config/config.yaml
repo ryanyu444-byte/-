@@ -568,7 +568,71 @@ ai_translation:
 
 
 # ===============================================================
-# 11. 高级设置（一般无需修改）
+# 11. 视频生成
+#
+# 基于热点新闻自动生成播报视频
+# 流程: AI 生成脚本 → TTS 语音合成 → MoviePy 视频渲染
+# 依赖: pip install edge-tts moviepy mutagen (可选安装)
+# ===============================================================
+video:
+  enabled: false                      # 是否启用视频生成（总开关）
+
+  # 输出语言（与 AI 脚本生成相关）
+  language: "Chinese"
+
+  # 播报风格
+  # professional: 专业新闻播报
+  # casual: 轻松口语风格
+  # brief: 极简快讯风格
+  style: "professional"
+
+  # 最大分段数（每段对应一条或一组新闻）
+  max_segments: 8
+
+  # 输出目录
+  output_dir: "output/video"
+
+  # 是否保留临时文件（音频片段等，调试用）
+  keep_temp: false
+
+  # 脚本提示词文件（相对于 config 目录）
+  script_prompt_file: "video_script_prompt.txt"
+
+  # TTS 语音合成配置
+  tts:
+    # 语音角色（edge-tts 音色名称）
+    # 中文推荐:
+    #   zh-CN-YunjianNeural  → 男声，新闻播报风格（默认）
+    #   zh-CN-YunxiNeural    → 男声，年轻自然
+    #   zh-CN-XiaoxiaoNeural → 女声，温和自然
+    # 英文推荐:
+    #   en-US-DavisNeural    → 男声，新闻风格
+    #   en-US-JennyNeural    → 女声，清晰自然
+    # 快捷别名: zh-CN-male, zh-CN-female, zh-CN-news, en-US-male, en-US-female, en-US-news
+    # 完整列表: edge-tts --list-voices
+    voice: ""                         # 留空自动根据 language 选择
+
+    rate: "+0%"                       # 语速调节（如 "+10%", "-5%"）
+    volume: "+0%"                     # 音量调节
+    pitch: "+0Hz"                     # 音调调节
+
+  # 视频渲染配置
+  render:
+    width: 1920                       # 视频宽度
+    height: 1080                      # 视频高度
+    fps: 24                           # 帧率
+    bg_color: [18, 18, 24]            # 背景色 RGB
+    title_color: "white"              # 标题颜色
+    subtitle_color: "#E0E0E0"         # 字幕颜色
+    accent_color: "#4FC3F7"           # 强调色
+    font: "Noto-Sans-CJK-SC"         # 字体（需系统已安装）
+    title_fontsize: 64                # 标题字号
+    subtitle_fontsize: 42             # 字幕字号
+    watermark: "TrendRadar"           # 水印文字（留空则不显示）
+
+
+# ===============================================================
+# 12. 高级设置（一般无需修改）
 # ===============================================================
 advanced:
   # 调试模式

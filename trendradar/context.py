@@ -41,6 +41,7 @@ from trendradar.notification import (
 from trendradar.ai import AITranslator
 from trendradar.ai.filter import AIFilter, AIFilterResult
 from trendradar.storage import get_storage_manager
+from trendradar.video import VideoGenerator, VideoResult
 
 
 class AppContext:
@@ -1110,6 +1111,55 @@ class AppContext:
             rss_stats.sort(key=lambda x: (-x["count"], x.get("position", 9999), x["word"]))
 
         return hotlist_stats, rss_stats
+
+    # === 视频生成 ===
+
+    @property
+    def video_config(self) -> Dict:
+        """获取视频生成配置"""
+        return self.config.get("VIDEO", {})
+
+    @property
+    def video_enabled(self) -> bool:
+        """视频生成是否启用"""
+        return self.video_config.get("ENABLED", False)
+
+    def create_video_generator(self) -> VideoGenerator:
+        """创建视频生成器"""
+        ai_config = self.config.get("AI", {})
+        return VideoGenerator(
+            ai_config=ai_config,
+            video_config=self.video_config,
+            get_time_func=self.get_time,
+            debug=self.config.get("DEBUG", False),
+        )
+
+    def generate_video(
+        self,
+        stats: List[Dict],
+        rss_stats: Optional[List[Dict]] = None,
+        report_mode: str = "daily",
+        report_type: str = "热点播报",
+        ai_analysis: Optional[Any] = None,
+    ) -> Optional[VideoResult]:
+        """
+        生成视频（如果启用）
+
+        Returns:
+            VideoResult 或 None（未启用时）
+        """
+        if not self.video_enabled:
+            return None
+
+        generator = self.create_video_generator()
+        return generator.generate(
+            stats=stats,
+            rss_stats=rss_stats,
+            report_mode=report_mode,
+            report_type=report_type,
+            ai_analysis=ai_analysis,
+            date_folder=self.format_date(),
+        )
 
     # === 资源清理 ===
 
