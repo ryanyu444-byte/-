@@ -1208,6 +1208,602 @@ class AmazonListingTools:
 
         return hint
 
+    # ==================== 实操指南生成 ====================
+
+    def get_practical_guide(
+        self,
+        product_name: str,
+        skill_level: str = "beginner",
+        budget: str = "low",
+        tool_preference: Optional[str] = None,
+        category: Optional[str] = None,
+    ) -> Dict:
+        """
+        生成从零到成品的实操指南：用什么工具、怎么操作、怎么后期处理
+
+        Args:
+            product_name: 产品名称
+            skill_level: 技能水平 beginner/intermediate/advanced
+            budget: 预算水平 low(免费/低成本) / medium(适度投入) / high(专业投入)
+            tool_preference: 偏好的AI工具 midjourney/dalle/stable_diffusion/canva
+            category: 产品类目
+
+        Returns:
+            完整的实操指南
+        """
+        if not product_name or not product_name.strip():
+            return {
+                "success": False,
+                "error": {"code": "INVALID_PARAMETER", "message": "产品名称不能为空"},
+            }
+
+        product_name = product_name.strip()
+        category = category or "通用类目"
+
+        valid_levels = ("beginner", "intermediate", "advanced")
+        if skill_level not in valid_levels:
+            skill_level = "beginner"
+
+        valid_budgets = ("low", "medium", "high")
+        if budget not in valid_budgets:
+            budget = "low"
+
+        recommended_stack = self._recommend_tool_stack(skill_level, budget, tool_preference)
+
+        guide = {
+            "success": True,
+            "summary": {
+                "description": f"亚马逊商品「{product_name}」图片+视频制作实操指南",
+                "skill_level": {"beginner": "新手", "intermediate": "进阶", "advanced": "专业"}[skill_level],
+                "budget": {"low": "低成本/免费", "medium": "适度投入", "high": "专业投入"}[budget],
+                "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            },
+            "recommended_tools": recommended_stack,
+            "step_by_step_image_guide": self._build_image_creation_steps(
+                product_name, category, skill_level, budget, recommended_stack
+            ),
+            "step_by_step_video_guide": self._build_video_creation_steps(
+                product_name, category, skill_level, budget, recommended_stack
+            ),
+            "post_processing_guide": self._build_post_processing_guide(skill_level, budget),
+            "quality_check_before_upload": [
+                "在手机上打开图片，检查缩略图效果（模拟买家浏览体验）",
+                "主图：确认背景纯白、无文字、产品清晰",
+                "副图：确认文字在手机端可读（放大看是否模糊）",
+                "A+：在电脑和手机上分别预览排版效果",
+                "视频：确认前3秒能抓住注意力，无黑边，声音清晰",
+                "所有图片尺寸 ≥ 1000x1000px，建议 2000x2000px",
+                "文件大小 < 10MB（亚马逊限制）",
+            ],
+            "common_beginner_mistakes": [
+                {"mistake": "主图背景不够白", "fix": "用 remove.bg 免费抠图，再放到纯白画布上"},
+                {"mistake": "AI生的图产品细节不准确", "fix": "用AI生成场景/背景，产品部分用真实照片替换合成"},
+                {"mistake": "副图文字太小手机看不清", "fix": "文字至少24pt，用对比色，先在手机上预览"},
+                {"mistake": "图片风格不统一", "fix": "先做1张定稿确认风格，再批量制作其余图片"},
+                {"mistake": "A+内容被亚马逊拒审", "fix": "检查禁用词：最佳/第一/保修/价格/竞品名"},
+                {"mistake": "视频前几秒没吸引力", "fix": "前3秒放产品最大卖点或使用效果，别放Logo"},
+            ],
+        }
+
+        return guide
+
+    def _recommend_tool_stack(
+        self, skill_level: str, budget: str, tool_preference: Optional[str]
+    ) -> Dict:
+        """根据技能和预算推荐工具组合"""
+
+        stacks = {
+            ("beginner", "low"): {
+                "ai_image": {
+                    "primary": "ChatGPT (DALL-E 3)",
+                    "cost": "ChatGPT Plus $20/月 或 免费额度",
+                    "why": "操作最简单，直接对话描述就能生图，无需学习额外软件",
+                    "how_to_start": [
+                        "打开 chat.openai.com 或 ChatGPT App",
+                        "直接输入中文描述：'帮我生成一张蓝牙音箱的亚马逊主图，纯白背景，产品居中'",
+                        "不满意就继续对话调整：'背景再白一些'、'产品放大一点'",
+                        "点击图片下载，选择最高分辨率",
+                    ],
+                    "alternative": "Microsoft Copilot (免费，内置DALL-E)",
+                },
+                "background_removal": {
+                    "tool": "remove.bg",
+                    "cost": "免费（低分辨率）",
+                    "url": "https://www.remove.bg/zh",
+                    "how": "上传图片 → 自动抠图 → 下载PNG透明底 → 放到白色画布上",
+                },
+                "editing": {
+                    "tool": "Canva (在线设计)",
+                    "cost": "免费版够用",
+                    "url": "https://www.canva.com",
+                    "how": "用于给副图添加文字标注、图标、卖点说明",
+                    "how_to_start": [
+                        "注册 Canva → 新建 1000x1000 或 2000x2000 自定义尺寸",
+                        "上传 AI 生成的产品图作为底图",
+                        "使用模板或手动添加文字、图标",
+                        "导出为 PNG 或 JPEG（高质量）",
+                    ],
+                },
+                "video": {
+                    "tool": "Canva / 剪映 (CapCut)",
+                    "cost": "免费",
+                    "how": "用产品图片+文字动画制作简单的产品展示视频",
+                },
+            },
+            ("beginner", "medium"): {
+                "ai_image": {
+                    "primary": "Midjourney",
+                    "cost": "$10/月 Basic Plan",
+                    "why": "生图质量最高，尤其擅长产品摄影风格",
+                    "how_to_start": [
+                        "访问 midjourney.com 注册账号并订阅",
+                        "进入 Midjourney 的 Discord 或网页版",
+                        "输入 /imagine 命令 + 英文 prompt",
+                        "从4张结果中选择最好的，点 U1-U4 放大",
+                        "用 Vary(Subtle) 微调细节",
+                    ],
+                    "alternative": "ChatGPT + DALL-E 3（操作更简单）",
+                },
+                "background_removal": {
+                    "tool": "remove.bg Pro",
+                    "cost": "$9.99/月（高分辨率输出）",
+                    "url": "https://www.remove.bg/zh",
+                    "how": "上传→自动抠图→高清下载→精准边缘",
+                },
+                "editing": {
+                    "tool": "Canva Pro",
+                    "cost": "$12.99/月",
+                    "url": "https://www.canva.com",
+                    "how": "Pro版有更多模板、素材库和一键抠图功能",
+                },
+                "video": {
+                    "tool": "剪映专业版 / Canva Pro",
+                    "cost": "免费 / $12.99/月",
+                    "how": "产品图片幻灯片+转场+配乐+文字动画",
+                },
+            },
+            ("intermediate", "medium"): {
+                "ai_image": {
+                    "primary": "Midjourney + ChatGPT (DALL-E 3)",
+                    "cost": "MJ $10/月 + ChatGPT Plus $20/月",
+                    "why": "MJ做场景图/氛围图，DALL-E做精准描述的产品图",
+                    "how_to_start": [
+                        "主图/白底图：用 DALL-E 3 生成（纯白背景更稳定）",
+                        "场景图/生活方式图：用 Midjourney（氛围感更好）",
+                        "A+横幅：用 Midjourney --ar 16:5 宽幅模式",
+                    ],
+                },
+                "background_removal": {
+                    "tool": "Photoshop (AI智能抠图) 或 Photoroom",
+                    "cost": "PS $22.99/月 / Photoroom 免费版",
+                    "how": "PS: 选择主体→一键抠图→精修边缘 / Photoroom: 上传自动处理",
+                },
+                "editing": {
+                    "tool": "Photoshop + Canva",
+                    "cost": "PS $22.99/月 + Canva Free",
+                    "how": "PS做精修和合成，Canva做快速排版和信息图",
+                },
+                "video": {
+                    "tool": "剪映专业版 + AI视频工具",
+                    "cost": "免费 + 按需付费",
+                    "how": "产品实拍+AI特效+专业转场",
+                },
+            },
+            ("advanced", "high"): {
+                "ai_image": {
+                    "primary": "Midjourney + Stable Diffusion (本地部署)",
+                    "cost": "MJ $30/月 + SD免费（需显卡）",
+                    "why": "MJ做创意初稿，SD做精准控制（ControlNet+Inpainting）",
+                    "how_to_start": [
+                        "安装 Stable Diffusion WebUI (AUTOMATIC1111 或 ComfyUI)",
+                        "下载产品摄影专用模型：Realistic Vision / Product Design XL",
+                        "使用 ControlNet 控制产品姿态和构图",
+                        "使用 Inpainting 局部修改不满意的区域",
+                    ],
+                },
+                "background_removal": {
+                    "tool": "Photoshop + 手动精修",
+                    "cost": "$22.99/月",
+                    "how": "AI抠图 + 手动修边 + 色彩校正",
+                },
+                "editing": {
+                    "tool": "Photoshop + Illustrator",
+                    "cost": "Adobe 全家桶 $54.99/月",
+                    "how": "PS做合成精修，AI做矢量图标和信息图",
+                },
+                "video": {
+                    "tool": "Premiere Pro / After Effects + AI视频",
+                    "cost": "Adobe 全家桶 + AI视频工具",
+                    "how": "专业级产品视频制作",
+                },
+            },
+        }
+
+        key = (skill_level, budget)
+        if key not in stacks:
+            closest = ("beginner", "low")
+            for k in stacks:
+                if k[0] == skill_level or k[1] == budget:
+                    closest = k
+                    break
+            key = closest
+
+        stack = stacks[key]
+
+        if tool_preference:
+            preference_map = {
+                "midjourney": "Midjourney",
+                "dalle": "ChatGPT (DALL-E 3)",
+                "stable_diffusion": "Stable Diffusion (本地部署)",
+                "canva": "Canva AI 图片生成",
+            }
+            if tool_preference in preference_map:
+                stack["ai_image"]["user_preference"] = preference_map[tool_preference]
+
+        return stack
+
+    def _build_image_creation_steps(
+        self, product_name: str, category: str,
+        skill_level: str, budget: str, tools: Dict,
+    ) -> List[Dict]:
+        """构建图片制作分步教程"""
+        ai_tool = tools["ai_image"]["primary"]
+
+        steps = [
+            {
+                "step": 1,
+                "title": "准备产品素材",
+                "time": "10-30分钟",
+                "actions": [
+                    "用手机拍摄产品照片（多角度：正面、侧面、背面、45度、俯视）",
+                    "确保光线充足（自然光最佳，或台灯补光）",
+                    "白色背景纸/白墙作为背景（后续AI优化）",
+                    "拍摄产品细节：材质纹理、按键、接口、Logo等",
+                    "如有包装盒和配件，也一起拍",
+                ],
+                "tips": "手机拍照就够用，不需要专业相机。关键是光线充足+画面稳定",
+            },
+            {
+                "step": 2,
+                "title": f"用 {ai_tool} 生成主图",
+                "time": "15-30分钟",
+                "actions": self._get_main_image_steps(ai_tool, product_name),
+                "tips": "主图最重要，多生成几张对比挑选。如果AI生成的产品外观不够准确，用真实照片抠图+AI生成的白底更可靠",
+            },
+            {
+                "step": 3,
+                "title": "主图后期处理",
+                "time": "10-20分钟",
+                "actions": [
+                    f"打开 {tools['background_removal']['tool']} 确保背景纯白",
+                    "在 Canva 或 Photoshop 中打开，新建 2000x2000px 白色画布",
+                    "将抠好的产品图放入画布中央，调整大小占比 ≥ 85%",
+                    "检查边缘是否有毛边或残留背景色",
+                    "导出为 JPEG，质量100%，RGB色彩模式",
+                ],
+                "alternative": "如果AI生图已经是纯白背景且效果好，可以直接调整尺寸导出",
+            },
+            {
+                "step": 4,
+                "title": f"用 {ai_tool} 生成副图底图",
+                "time": "30-60分钟",
+                "actions": [
+                    "按照副图类型逐张生成（场景图、细节图、使用图等）",
+                    "每种类型生成3-4张备选，挑选最好的",
+                    "场景图：描述产品在使用环境中的画面",
+                    "细节图：描述产品材质、工艺的微距特写",
+                    "使用步骤图：描述操作过程的分步画面",
+                ],
+                "tips": "副图允许创意发挥，不需要白底。重点是每张图传达一个清晰的卖点",
+            },
+            {
+                "step": 5,
+                "title": "副图添加文字和标注",
+                "time": "60-120分钟",
+                "actions": [
+                    f"打开 {tools['editing']['tool']}",
+                    "新建 2000x2000px 画布，导入AI生成的底图",
+                    "卖点信息图：添加3-5个卖点，每个配图标+简短文字",
+                    "尺寸对比图：添加尺寸标注线和数字",
+                    "使用步骤图：添加步骤编号 ①②③ 和说明文字",
+                    "统一字体（推荐无衬线体）、统一配色（品牌色）",
+                    "文字大小 ≥ 24pt，确保手机端可读",
+                ],
+                "tips": "Canva有大量免费模板，搜索 'Amazon product infographic' 可以找到参考",
+            },
+            {
+                "step": 6,
+                "title": "A+ 内容图片制作",
+                "time": "60-120分钟",
+                "actions": [
+                    "品牌横幅(970x300)：用AI生成宽幅品牌氛围图",
+                    "功能特性(4x 220x220)：用Canva制作图标+文字卡片",
+                    "对比图表(970x600)：用Canva表格模板制作产品对比",
+                    "注意：A+内容禁止提及竞品、价格、保修",
+                    "所有A+模块风格保持一致",
+                ],
+                "tips": "Canva 搜索 'Amazon A+ content' 有专门的模板",
+            },
+            {
+                "step": 7,
+                "title": "终审和上传",
+                "time": "20-30分钟",
+                "actions": [
+                    "所有图片在手机上预览（模拟买家浏览）",
+                    "检查主图合规（白底、无文字、占比）",
+                    "检查副图文字可读性",
+                    "登录 Amazon Seller Central → 编辑商品 → 上传图片",
+                    "A+内容：品牌 → A+内容管理器 → 创建A+页面",
+                    "提交后等待亚马逊审核（通常24-48小时）",
+                ],
+                "tips": "如果主图被拒，最常见的原因是背景不够白或包含了不允许的元素",
+            },
+        ]
+
+        return steps
+
+    def _get_main_image_steps(self, ai_tool: str, product_name: str) -> List[str]:
+        """根据AI工具生成主图操作步骤"""
+        if "DALL-E" in ai_tool or "ChatGPT" in ai_tool:
+            return [
+                f"打开 ChatGPT，直接发送：",
+                f"'帮我生成一张{product_name}的亚马逊产品主图。"
+                f"要求：纯白色背景(RGB 255,255,255)，产品居中占画面85%以上，"
+                f"专业商业摄影风格，柔光灯光，超高清晰度，不要任何文字和Logo'",
+                "如果产品外观不对，补充描述：'产品是...(详细描述外观、颜色、形状)'",
+                "不满意就继续修改：'背景再纯白一些' / '产品再大一些' / '换个角度'",
+                "满意后点击图片，选择最高分辨率下载",
+            ]
+        elif "Midjourney" in ai_tool:
+            return [
+                "打开 Midjourney (网页版或Discord)",
+                f"输入: /imagine commercial product photography, {product_name}, "
+                "centered on pure white background, studio lighting, "
+                "product fills 85% of frame, no text, no logo, photorealistic, 8k "
+                "--ar 1:1 --v 6 --s 250 --style raw",
+                "等待生成4张图片，选择最佳的一张",
+                "点击 U1/U2/U3/U4 放大你选中的图",
+                "如需微调：点击 Vary(Subtle) 小幅变化 或 Vary(Strong) 大幅变化",
+                "右键保存高清大图",
+            ]
+        else:
+            return [
+                "打开 Stable Diffusion WebUI",
+                f"Prompt: (masterpiece, best quality, product photography:1.4), "
+                f"{product_name}, centered, pure white background, studio lighting, 8k",
+                "Negative Prompt: text, watermark, logo, shadow, blurry, low quality",
+                "设置: Steps=30, CFG=7, Sampler=DPM++ 2M Karras, Size=1024x1024",
+                "点击 Generate，生成多张后挑选最佳",
+                "用 img2img + Inpainting 修复细节问题",
+            ]
+
+    def _build_video_creation_steps(
+        self, product_name: str, category: str,
+        skill_level: str, budget: str, tools: Dict,
+    ) -> Dict:
+        """构建视频制作教程"""
+        video_tool = tools.get("video", {}).get("tool", "剪映")
+
+        return {
+            "overview": {
+                "amazon_video_specs": {
+                    "duration": "15-60秒（推荐30秒以内）",
+                    "resolution": "1920x1080 (16:9) 或 1080x1080 (1:1)",
+                    "format": "MP4, MOV",
+                    "max_size": "500MB",
+                    "requirements": [
+                        "不得包含外部网站链接或联系方式",
+                        "不得包含价格/促销信息",
+                        "不得提及竞品品牌",
+                        "推荐前3秒展示产品核心卖点",
+                        "建议添加字幕（很多买家静音浏览）",
+                    ],
+                },
+                "video_types": [
+                    {"type": "产品展示视频", "适合": "所有产品", "description": "多角度展示产品外观和细节"},
+                    {"type": "使用演示视频", "适合": "功能性产品", "description": "展示产品使用方法和效果"},
+                    {"type": "生活方式视频", "适合": "提升品牌感", "description": "产品融入真实生活场景"},
+                    {"type": "图片轮播视频", "适合": "最简单/零基础", "description": "将产品图片做成带动画的视频"},
+                ],
+            },
+            "method_1_easiest": {
+                "name": "图片轮播视频（最简单，0基础可做）",
+                "tool": "Canva 或 剪映",
+                "time": "30-60分钟",
+                "steps": [
+                    f"打开 Canva → 新建视频项目 (1920x1080)",
+                    "上传你已经做好的产品图片（主图+副图）",
+                    "每张图做一页幻灯片，每页停留3-4秒",
+                    "添加转场动画（推荐：淡入淡出 或 滑动）",
+                    "添加产品卖点文字（大字、醒目、简短）",
+                    "添加背景音乐（Canva自带免费音乐库）",
+                    "导出为 MP4 (1080p)",
+                ],
+                "script_template": [
+                    "第1页(0-3s): 主图 + 产品名称/一句话卖点",
+                    "第2页(3-6s): 核心卖点1 + 配图",
+                    "第3页(6-9s): 核心卖点2 + 配图",
+                    "第4页(9-12s): 核心卖点3 + 配图",
+                    "第5页(12-15s): 使用场景图 + Call to Action",
+                ],
+            },
+            "method_2_ai_video": {
+                "name": "AI 视频生成（效果好，操作简单）",
+                "recommended_tools": [
+                    {
+                        "name": "可灵 AI (Kling)",
+                        "url": "https://klingai.com",
+                        "cost": "免费额度 / 会员",
+                        "best_for": "产品展示视频，支持图生视频",
+                        "how": [
+                            "上传产品图片（白底主图效果最好）",
+                            "输入描述：'产品缓慢旋转360度，纯白背景，商业摄影光线'",
+                            "选择视频时长和画质",
+                            "生成后下载 → 在剪映中添加字幕和音乐",
+                        ],
+                    },
+                    {
+                        "name": "Runway Gen-3",
+                        "url": "https://runwayml.com",
+                        "cost": "$12/月起",
+                        "best_for": "创意场景视频，高质量运镜",
+                        "how": [
+                            "上传产品图片作为参考",
+                            "描述想要的视频画面和镜头运动",
+                            "生成4秒片段，可以拼接多段",
+                        ],
+                    },
+                    {
+                        "name": "Pika",
+                        "url": "https://pika.art",
+                        "cost": "免费额度 / $8/月",
+                        "best_for": "图片转视频，动态效果",
+                        "how": [
+                            "上传产品图片",
+                            "描述想要的动态效果",
+                            "生成并调整",
+                        ],
+                    },
+                    {
+                        "name": "即梦 AI (Dreamina)",
+                        "url": "https://jimeng.jianying.com",
+                        "cost": "免费额度",
+                        "best_for": "中文友好，图生视频",
+                        "how": [
+                            "上传产品图片",
+                            "用中文描述视频效果",
+                            "生成 → 下载 → 后期编辑",
+                        ],
+                    },
+                ],
+            },
+            "method_3_phone_shoot": {
+                "name": "手机实拍视频（最真实，买家信任度高）",
+                "tool": f"手机 + {video_tool}",
+                "time": "2-4小时（拍摄+剪辑）",
+                "equipment": [
+                    "手机（iPhone/华为/小米，近3年的旗舰机都够用）",
+                    "三脚架或手机支架（淘宝20-50元）",
+                    "白色背景纸/布（淘宝10-30元）",
+                    "补光灯（可选，淘宝30-100元，或用自然光）",
+                ],
+                "shooting_tips": [
+                    "开启手机4K录制（设置→相机→4K 30fps）",
+                    "横屏拍摄（16:9比例）",
+                    "缓慢平稳地展示产品（旋转、翻转、打开、使用）",
+                    "每个镜头拍10-15秒，后期截取最好的部分",
+                    "拍摄内容：开箱→外观展示→功能演示→使用场景→配件展示",
+                ],
+                "editing_steps": [
+                    f"导入素材到 {video_tool}",
+                    "剪掉多余片段，每个镜头保留3-5秒",
+                    "添加转场（推荐简洁的淡入淡出）",
+                    "添加字幕文字（标注卖点，英文为主）",
+                    "添加背景音乐（轻快/科技感，取决于产品类型）",
+                    "调整整体时长在15-45秒",
+                    "导出 1080p MP4",
+                ],
+            },
+            "recommended_approach": self._recommend_video_approach(skill_level, budget, category),
+        }
+
+    def _recommend_video_approach(
+        self, skill_level: str, budget: str, category: str
+    ) -> Dict:
+        """推荐最适合的视频制作方案"""
+        if skill_level == "beginner" and budget == "low":
+            return {
+                "recommendation": "方案1 图片轮播视频",
+                "reason": "零基础可操作，用已有的产品图片在 Canva 中做成视频，30分钟搞定",
+                "next_step": "先做图片轮播视频上架，后续有余力再升级为 AI 视频或实拍视频",
+            }
+        elif skill_level == "beginner":
+            return {
+                "recommendation": "方案2 AI视频生成（可灵AI或即梦AI）",
+                "reason": "上传产品图就能自动生成视频，效果远超图片轮播，操作也很简单",
+                "next_step": "先用AI生成产品旋转展示视频，再在剪映中添加字幕",
+            }
+        else:
+            return {
+                "recommendation": "方案3 手机实拍 + AI辅助",
+                "reason": "真实拍摄的视频买家信任度最高，AI工具辅助提升品质",
+                "next_step": "实拍产品使用演示+AI生成品牌氛围片段，在剪映中混剪",
+            }
+
+    def _build_post_processing_guide(self, skill_level: str, budget: str) -> Dict:
+        """构建后期处理指南"""
+        return {
+            "background_to_pure_white": {
+                "description": "将主图背景处理为纯白 RGB(255,255,255)",
+                "free_methods": [
+                    {
+                        "tool": "remove.bg",
+                        "url": "https://www.remove.bg/zh",
+                        "steps": [
+                            "上传产品图片",
+                            "自动抠图完成后下载 PNG（透明背景）",
+                            "在 Canva 中新建 2000x2000 白色画布",
+                            "上传透明底产品图，居中放置",
+                            "导出为 JPEG",
+                        ],
+                    },
+                    {
+                        "tool": "Photoroom",
+                        "url": "https://www.photoroom.com",
+                        "steps": [
+                            "下载 Photoroom App（手机）或打开网页版",
+                            "上传图片 → 自动抠图",
+                            "选择白色背景",
+                            "调整产品位置和大小",
+                            "导出高清图",
+                        ],
+                    },
+                ],
+                "pro_method": {
+                    "tool": "Photoshop",
+                    "steps": [
+                        "打开产品图 → 选择 → 主体（AI自动选中产品）",
+                        "Ctrl+Shift+I 反选 → Delete 删除背景",
+                        "新建图层填充纯白 #FFFFFF",
+                        "用画笔工具修整边缘细节",
+                        "图像 → 画布大小 → 调整为 2000x2000",
+                        "导出为 JPEG，质量100%，sRGB",
+                    ],
+                },
+            },
+            "adding_text_and_icons": {
+                "description": "为副图添加卖点文字和图标标注",
+                "recommended_tool": "Canva（最适合新手）",
+                "steps": [
+                    "在 Canva 搜索 'Amazon product infographic' 找模板",
+                    "替换模板中的图片为你的产品图",
+                    "修改文字为你的产品卖点",
+                    "调整颜色匹配你的品牌色",
+                    "导出为 2000x2000 JPEG",
+                ],
+                "design_rules": [
+                    "字体：使用1-2种字体（标题粗体+正文常规）",
+                    "颜色：主色+辅色+白/黑，不超过3种颜色",
+                    "排版：信息层次分明，留白充足",
+                    "图标：使用简洁的线性图标，Canva素材库有大量免费图标",
+                ],
+            },
+            "resize_and_export": {
+                "description": "调整尺寸并导出",
+                "amazon_requirements": {
+                    "main_image": "2000x2000px, JPEG, RGB, ≤10MB",
+                    "secondary": "2000x2000px, JPEG/PNG, RGB, ≤10MB",
+                    "aplus_banner": "970x300px 或 970x600px, JPEG/PNG",
+                    "video": "1920x1080 或 1080x1080, MP4, ≤500MB",
+                },
+                "batch_resize_tools": [
+                    "Canva: 导出时选择自定义尺寸",
+                    "Birme (https://www.birme.net): 免费在线批量调整图片尺寸",
+                    "Squoosh (https://squoosh.app): Google出品的图片压缩工具",
+                ],
+            },
+        }
+
 
 class _ProductContext:
     """产品信息上下文（内部使用）"""

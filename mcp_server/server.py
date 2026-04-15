@@ -1346,6 +1346,80 @@ async def generate_amazon_image_prompts(
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
+@mcp.tool
+async def get_amazon_image_practical_guide(
+    product_name: str,
+    skill_level: str = "beginner",
+    budget: str = "low",
+    tool_preference: Optional[str] = None,
+    category: Optional[str] = None
+) -> str:
+    """
+    亚马逊商品图片+视频制作实操指南 —— 从零到成品的完整教程
+
+    根据你的技能水平和预算，推荐最合适的工具组合，并提供每一步的详细操作说明。
+    覆盖图片制作和视频制作的全流程，包含免费工具方案。
+
+    **本工具解决的问题：**
+    - 不知道用什么工具做图/做视频
+    - 不知道具体怎么操作每个工具
+    - 不知道怎么后期处理（抠图、加文字、调尺寸）
+    - 不知道怎么做亚马逊产品视频
+
+    **返回内容包含：**
+    - 工具推荐（AI生图 + 抠图 + 编辑 + 视频，根据预算推荐）
+    - 图片制作7步教程（从拍照到上传，每步有具体操作）
+    - 视频制作3种方案（图片轮播 / AI视频 / 手机实拍）
+    - 后期处理教程（抠图、加文字、调尺寸）
+    - 新手常见错误和解决方法
+
+    Args:
+        product_name: 产品名称（必需）
+        skill_level: 你的技能水平，默认 "beginner"
+            - "beginner": 新手（没用过设计软件）
+            - "intermediate": 进阶（会用 Canva/简单PS）
+            - "advanced": 专业（熟练 Photoshop/视频剪辑）
+        budget: 预算水平，默认 "low"
+            - "low": 低成本/免费方案（用免费工具）
+            - "medium": 适度投入（$20-50/月工具费）
+            - "high": 专业投入（$100+/月，全套专业工具）
+        tool_preference: 偏好的 AI 生图工具（可选）
+            - "midjourney": 偏好 Midjourney
+            - "dalle": 偏好 ChatGPT + DALL-E
+            - "stable_diffusion": 偏好 Stable Diffusion 本地部署
+            - "canva": 偏好 Canva
+        category: 产品类目（可选），影响场景和视频建议
+
+    Returns:
+        JSON格式的完整实操指南
+
+    Examples:
+        - get_amazon_image_practical_guide(product_name="蓝牙耳机")
+        - get_amazon_image_practical_guide(
+              product_name="瑜伽垫",
+              skill_level="beginner",
+              budget="low",
+              tool_preference="dalle",
+              category="运动户外"
+          )
+        - get_amazon_image_practical_guide(
+              product_name="机械键盘",
+              skill_level="intermediate",
+              budget="medium"
+          )
+    """
+    tools = _get_tools()
+    result = await asyncio.to_thread(
+        tools['amazon'].get_practical_guide,
+        product_name=product_name,
+        skill_level=skill_level,
+        budget=budget,
+        tool_preference=tool_preference,
+        category=category
+    )
+    return json.dumps(result, ensure_ascii=False, indent=2)
+
+
 # ==================== 启动入口 ====================
 
 def run_server(
@@ -1437,6 +1511,7 @@ def run_server(
     print("    28. get_amazon_image_specs          - 获取亚马逊图片规格要求")
     print("    29. generate_amazon_creative_brief  - 生成图片创意简报(Creative Brief)")
     print("    30. generate_amazon_image_prompts   - 生成 AI 生图提示词(MJ/DALL-E/SD)")
+    print("    31. get_amazon_image_practical_guide - 图片+视频制作实操教程(新手友好)")
     print("=" * 60)
     print()
 
