@@ -763,3 +763,476 @@ class AmazonListingTools:
         parts.append("*本简报由 TrendRadar MCP 自动生成，请结合实际产品情况调整*")
 
         return "\n".join(parts)
+
+    # ==================== AI 生图 Prompt 生成 ====================
+
+    def generate_image_prompts(
+        self,
+        product_name: str,
+        product_description: Optional[str] = None,
+        category: Optional[str] = None,
+        selling_points: Optional[List[str]] = None,
+        target_audience: Optional[str] = None,
+        brand_style: Optional[str] = None,
+        material: Optional[str] = None,
+        color: Optional[str] = None,
+        include_aplus: bool = True,
+        secondary_count: int = 7,
+        platforms: Optional[List[str]] = None,
+    ) -> Dict:
+        """
+        为亚马逊商品图片生成 AI 生图提示词（Midjourney / DALL-E / Stable Diffusion）
+
+        Args:
+            product_name: 产品名称（必需）
+            product_description: 产品外观描述（如 "圆柱形黑色音箱，顶部有银色按键"）
+            category: 产品类目
+            selling_points: 核心卖点列表
+            target_audience: 目标客群
+            brand_style: 品牌视觉风格
+            material: 产品材质（如 "不锈钢"、"硅胶"、"铝合金"）
+            color: 产品主色（如 "哑光黑"、"玫瑰金"）
+            include_aplus: 是否包含 A+ 横幅 prompt
+            secondary_count: 副图数量，默认7，范围2-8
+            platforms: 生成哪些平台的 prompt，默认全部
+                       可选: ["midjourney", "dalle", "stable_diffusion"]
+
+        Returns:
+            全套 AI 生图 prompt 字典
+        """
+        if not product_name or not product_name.strip():
+            return {
+                "success": False,
+                "error": {
+                    "code": "INVALID_PARAMETER",
+                    "message": "产品名称不能为空",
+                },
+            }
+
+        product_name = product_name.strip()
+        secondary_count = max(2, min(8, secondary_count))
+        selling_points = selling_points or []
+        category = category or "通用类目"
+        brand_style = brand_style or "简约专业"
+        target_audience = target_audience or ""
+        material = material or ""
+        color = color or ""
+        product_description = product_description or ""
+
+        all_platforms = ["midjourney", "dalle", "stable_diffusion"]
+        if platforms:
+            platforms = [p for p in platforms if p in all_platforms]
+        if not platforms:
+            platforms = all_platforms
+
+        product_ctx = _ProductContext(
+            name=product_name,
+            description=product_description,
+            category=category,
+            selling_points=selling_points,
+            target_audience=target_audience,
+            brand_style=brand_style,
+            material=material,
+            color=color,
+        )
+
+        result = {
+            "success": True,
+            "summary": {
+                "description": f"亚马逊商品「{product_name}」全套 AI 生图提示词",
+                "product": product_name,
+                "platforms": platforms,
+                "total_prompts": 1 + secondary_count + (3 if include_aplus else 0),
+                "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            },
+            "main_image_prompt": self._gen_main_image_prompt(product_ctx, platforms),
+            "secondary_image_prompts": self._gen_secondary_prompts(
+                product_ctx, platforms, secondary_count
+            ),
+        }
+
+        if include_aplus:
+            result["aplus_prompts"] = self._gen_aplus_prompts(product_ctx, platforms)
+
+        result["usage_guide"] = {
+            "midjourney": {
+                "how_to_use": "将 prompt 粘贴到 Midjourney Discord 的 /imagine 命令中",
+                "tip": "生成后用 U1-U4 放大，再用 Vary(Subtle) 微调",
+                "recommended_params": "--ar 1:1 --v 6 --s 250",
+            },
+            "dalle": {
+                "how_to_use": "将 prompt 粘贴到 ChatGPT (DALL-E 3) 或 OpenAI API",
+                "tip": "指定 size=1024x1024, quality=hd, style=natural",
+                "recommended_params": "size: 1024x1024, quality: hd",
+            },
+            "stable_diffusion": {
+                "how_to_use": "将 prompt 和 negative_prompt 分别填入 WebUI 对应输入框",
+                "tip": "推荐模型：Realistic Vision / Product Design XL",
+                "recommended_params": "Steps: 30, CFG: 7, Sampler: DPM++ 2M Karras",
+            },
+        }
+
+        return result
+
+    def _gen_main_image_prompt(
+        self, ctx: "_ProductContext", platforms: List[str]
+    ) -> Dict:
+        """生成主图 prompt（纯白底产品图）"""
+        product_desc = self._build_product_phrase(ctx)
+
+        prompts = {}
+
+        if "midjourney" in platforms:
+            prompts["midjourney"] = {
+                "prompt": (
+                    f"commercial product photography, {product_desc}, "
+                    f"centered on pure white background, studio lighting with soft diffused light, "
+                    f"product fills 85 percent of frame, sharp focus on product details, "
+                    f"no text, no logo, no watermark, no shadow, no props, "
+                    f"professional e-commerce product shot, photorealistic, 8k quality "
+                    f"--ar 1:1 --v 6 --s 250 --style raw"
+                ),
+                "notes": "主图要求：纯白背景、无文字、无Logo、产品占比≥85%",
+            }
+
+        if "dalle" in platforms:
+            prompts["dalle"] = {
+                "prompt": (
+                    f"A professional e-commerce product photograph of {product_desc}. "
+                    f"The product is centered on a perfectly pure white background (RGB 255,255,255). "
+                    f"Studio lighting with soft, even illumination and no harsh shadows. "
+                    f"The product fills approximately 85% of the frame. "
+                    f"Extremely sharp focus showing fine details and textures. "
+                    f"No text, no logos, no watermarks, no borders, no additional objects or props. "
+                    f"Professional commercial photography quality, photorealistic."
+                ),
+                "params": {"size": "1024x1024", "quality": "hd", "style": "natural"},
+            }
+
+        if "stable_diffusion" in platforms:
+            prompts["stable_diffusion"] = {
+                "prompt": (
+                    f"(masterpiece, best quality, professional product photography:1.4), "
+                    f"{product_desc}, "
+                    f"centered composition, pure white background, "
+                    f"studio softbox lighting, product fills 85 percent of frame, "
+                    f"sharp focus, high detail, commercial photography, 8k uhd, "
+                    f"e-commerce product shot"
+                ),
+                "negative_prompt": (
+                    "text, watermark, logo, label, border, shadow, reflection, "
+                    "props, accessories, human, hand, fingers, blurry, "
+                    "low quality, jpeg artifacts, noise, deformed, "
+                    "colored background, gradient background"
+                ),
+                "params": {
+                    "steps": 30,
+                    "cfg_scale": 7,
+                    "sampler": "DPM++ 2M Karras",
+                    "size": "1024x1024",
+                },
+            }
+
+        return {
+            "type": "主图 (Main Image)",
+            "amazon_requirement": "纯白背景 RGB(255,255,255)，产品占比≥85%，无文字/Logo/水印",
+            "prompts": prompts,
+            "post_processing_note": "AI 生成后仍需在 Photoshop 中精修：确保背景纯白、移除瑕疵、调整占比",
+        }
+
+    def _gen_secondary_prompts(
+        self, ctx: "_ProductContext", platforms: List[str], count: int
+    ) -> List[Dict]:
+        """生成副图 prompt"""
+        product_desc = self._build_product_phrase(ctx)
+        scene_hint = self._get_scene_hint(ctx)
+
+        secondary_configs = [
+            {
+                "name": "多角度展示图",
+                "en_desc": "product shown from multiple angles including front, side, back and 45-degree view",
+                "scene": f"{product_desc}, multiple angle views, arranged neatly on clean surface",
+                "bg": "light grey gradient background",
+            },
+            {
+                "name": "核心卖点信息图",
+                "en_desc": "product with highlighted key features",
+                "scene": f"{product_desc}, elegant floating angle, space for text overlay and feature callouts",
+                "bg": "clean minimal background with subtle brand color accents",
+                "note": "生成后需用设计软件添加卖点图标和文字标注",
+            },
+            {
+                "name": "使用场景/生活方式图",
+                "en_desc": f"product in real-life usage scenario{scene_hint}",
+                "scene": f"person using {product_desc}{scene_hint}, natural lifestyle moment, warm and inviting atmosphere",
+                "bg": "natural environment, lifestyle setting",
+            },
+            {
+                "name": "尺寸对比图",
+                "en_desc": "product next to common objects for size reference",
+                "scene": f"{product_desc} placed next to a smartphone and a hand for size comparison, clean layout",
+                "bg": "clean white or light surface",
+                "note": "生成后需添加尺寸标注线和数字",
+            },
+            {
+                "name": "细节特写图",
+                "en_desc": "extreme close-up of product details and texture",
+                "scene": f"macro close-up shot of {product_desc}, showing material texture and craftsmanship details",
+                "bg": "shallow depth of field, blurred background",
+            },
+            {
+                "name": "使用步骤展示图",
+                "en_desc": "step-by-step usage demonstration",
+                "scene": f"hands demonstrating how to use {product_desc}, clean step-by-step visual guide",
+                "bg": "clean neutral background",
+                "note": "生成后需添加步骤编号和文字说明",
+            },
+            {
+                "name": "包装清单图",
+                "en_desc": "unboxed product with all accessories laid out",
+                "scene": f"{product_desc} with all included accessories neatly arranged in flat lay composition, premium unboxing experience",
+                "bg": "clean white or dark premium surface",
+            },
+            {
+                "name": "品牌信任图",
+                "en_desc": "brand and quality certification showcase",
+                "scene": f"{product_desc} in premium setting conveying trust and quality, elegant brand presentation",
+                "bg": "sophisticated dark or gradient background, premium feel",
+                "note": "生成后需添加品牌Logo和认证标志",
+            },
+        ]
+
+        results = []
+        for i in range(min(count, len(secondary_configs))):
+            cfg = secondary_configs[i]
+            prompts = {}
+
+            if "midjourney" in platforms:
+                prompts["midjourney"] = {
+                    "prompt": (
+                        f"Amazon product listing photo, {cfg['en_desc']}, "
+                        f"{cfg['scene']}, {cfg['bg']}, "
+                        f"professional commercial photography, high quality, sharp details, "
+                        f"modern clean aesthetic "
+                        f"--ar 1:1 --v 6 --s 200"
+                    ),
+                }
+
+            if "dalle" in platforms:
+                prompts["dalle"] = {
+                    "prompt": (
+                        f"A professional Amazon product listing photograph: {cfg['en_desc']}. "
+                        f"{cfg['scene']}. {cfg['bg']}. "
+                        f"Professional commercial photography with excellent lighting and composition. "
+                        f"Modern, clean aesthetic suitable for e-commerce."
+                    ),
+                    "params": {"size": "1024x1024", "quality": "hd", "style": "natural"},
+                }
+
+            if "stable_diffusion" in platforms:
+                prompts["stable_diffusion"] = {
+                    "prompt": (
+                        f"(masterpiece, best quality, commercial photography:1.3), "
+                        f"{cfg['scene']}, {cfg['bg']}, "
+                        f"professional product photography, sharp focus, "
+                        f"high detail, modern aesthetic, 8k uhd"
+                    ),
+                    "negative_prompt": (
+                        "low quality, blurry, jpeg artifacts, noise, deformed, "
+                        "ugly, bad anatomy, bad hands, extra fingers, "
+                        "watermark, text overlay, logo"
+                    ),
+                    "params": {
+                        "steps": 30,
+                        "cfg_scale": 7,
+                        "sampler": "DPM++ 2M Karras",
+                        "size": "1024x1024",
+                    },
+                }
+
+            item = {
+                "position": i + 1,
+                "type": cfg["name"],
+                "prompts": prompts,
+            }
+
+            if cfg.get("note"):
+                item["post_processing_note"] = cfg["note"]
+
+            if i == 1 and ctx.selling_points:
+                item["selling_points_for_overlay"] = ctx.selling_points[:5]
+
+            results.append(item)
+
+        return results
+
+    def _gen_aplus_prompts(
+        self, ctx: "_ProductContext", platforms: List[str]
+    ) -> List[Dict]:
+        """生成 A+ 内容图片 prompt"""
+        product_desc = self._build_product_phrase(ctx)
+        scene_hint = self._get_scene_hint(ctx)
+
+        aplus_configs = [
+            {
+                "name": "品牌故事横幅",
+                "dimensions": "970x300 (约 16:5 宽幅)",
+                "ar": "--ar 16:5",
+                "en_desc": "wide cinematic brand story banner",
+                "scene": (
+                    f"cinematic wide banner, {product_desc} in elegant premium setting, "
+                    f"brand storytelling atmosphere, warm golden hour lighting, "
+                    f"luxurious and aspirational mood"
+                ),
+            },
+            {
+                "name": "核心卖点宣言横幅",
+                "dimensions": "970x300 (约 16:5 宽幅)",
+                "ar": "--ar 16:5",
+                "en_desc": "hero banner with product as centerpiece",
+                "scene": (
+                    f"dramatic hero shot, {product_desc} as centerpiece, "
+                    f"dynamic composition with space for text overlay on left or right, "
+                    f"bold modern aesthetic, premium product showcase"
+                ),
+                "note": "生成后需在留白区域添加核心卖点文案",
+            },
+            {
+                "name": "场景氛围大图",
+                "dimensions": "970x600 (约 16:10)",
+                "ar": "--ar 16:10",
+                "en_desc": f"immersive lifestyle scene with product{scene_hint}",
+                "scene": (
+                    f"immersive lifestyle photography, {product_desc} in natural use scenario{scene_hint}, "
+                    f"warm inviting atmosphere, editorial quality, magazine-style composition"
+                ),
+            },
+        ]
+
+        results = []
+        for cfg in aplus_configs:
+            prompts = {}
+
+            if "midjourney" in platforms:
+                prompts["midjourney"] = {
+                    "prompt": (
+                        f"Amazon A+ content, {cfg['en_desc']}, "
+                        f"{cfg['scene']}, "
+                        f"professional commercial photography, cinematic composition, "
+                        f"high-end brand visual "
+                        f"{cfg['ar']} --v 6 --s 300 --style raw"
+                    ),
+                }
+
+            if "dalle" in platforms:
+                ratio_hint = cfg["dimensions"]
+                prompts["dalle"] = {
+                    "prompt": (
+                        f"A professional Amazon A+ content image ({ratio_hint}): "
+                        f"{cfg['en_desc']}. {cfg['scene']}. "
+                        f"Cinematic composition, professional commercial photography, "
+                        f"high-end brand visual quality."
+                    ),
+                    "params": {"size": "1792x1024", "quality": "hd", "style": "natural"},
+                }
+
+            if "stable_diffusion" in platforms:
+                prompts["stable_diffusion"] = {
+                    "prompt": (
+                        f"(masterpiece, best quality, cinematic:1.4), "
+                        f"{cfg['scene']}, "
+                        f"professional commercial photography, premium brand visual, "
+                        f"sharp focus, high detail, 8k uhd"
+                    ),
+                    "negative_prompt": (
+                        "low quality, blurry, jpeg artifacts, noise, deformed, "
+                        "text, watermark, logo, ugly, bad composition"
+                    ),
+                    "params": {
+                        "steps": 35,
+                        "cfg_scale": 7.5,
+                        "sampler": "DPM++ 2M Karras",
+                        "size": "1536x640",
+                    },
+                }
+
+            item = {
+                "position": len(results) + 1,
+                "type": cfg["name"],
+                "dimensions": cfg["dimensions"],
+                "prompts": prompts,
+            }
+
+            if cfg.get("note"):
+                item["post_processing_note"] = cfg["note"]
+
+            results.append(item)
+
+        return results
+
+    # ==================== Prompt 构建辅助方法 ====================
+
+    def _build_product_phrase(self, ctx: "_ProductContext") -> str:
+        """构建产品描述短语（英文，用于 prompt）"""
+        parts = []
+
+        if ctx.description:
+            parts.append(ctx.description)
+        else:
+            parts.append(ctx.name)
+
+        if ctx.color:
+            parts.append(ctx.color)
+
+        if ctx.material:
+            parts.append(f"made of {ctx.material}")
+
+        return ", ".join(parts) if parts else ctx.name
+
+    def _get_scene_hint(self, ctx: "_ProductContext") -> str:
+        """根据目标客群和类目生成场景提示"""
+        scene_map = {
+            "电子产品": ", modern desk setup, tech-savvy environment",
+            "家居用品": ", cozy home interior, warm natural light",
+            "服装": ", urban street style or studio setting",
+            "食品": ", kitchen counter or dining table setting",
+            "美妆个护": ", bathroom vanity or dressing table, soft feminine lighting",
+            "运动户外": ", outdoor adventure or gym setting, energetic atmosphere",
+            "玩具": ", bright playful children's room, colorful cheerful setting",
+        }
+
+        hint = scene_map.get(ctx.category, "")
+
+        if ctx.target_audience:
+            hint += f", used by {ctx.target_audience}"
+
+        return hint
+
+
+class _ProductContext:
+    """产品信息上下文（内部使用）"""
+
+    __slots__ = (
+        "name", "description", "category", "selling_points",
+        "target_audience", "brand_style", "material", "color",
+    )
+
+    def __init__(
+        self,
+        name: str,
+        description: str = "",
+        category: str = "",
+        selling_points: Optional[List[str]] = None,
+        target_audience: str = "",
+        brand_style: str = "",
+        material: str = "",
+        color: str = "",
+    ):
+        self.name = name
+        self.description = description
+        self.category = category
+        self.selling_points = selling_points or []
+        self.target_audience = target_audience
+        self.brand_style = brand_style
+        self.material = material
+        self.color = color

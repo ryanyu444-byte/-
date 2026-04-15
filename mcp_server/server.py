@@ -1263,6 +1263,89 @@ async def generate_amazon_creative_brief(
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
+@mcp.tool
+async def generate_amazon_image_prompts(
+    product_name: str,
+    product_description: Optional[str] = None,
+    category: Optional[str] = None,
+    selling_points: Optional[List[str]] = None,
+    target_audience: Optional[str] = None,
+    brand_style: Optional[str] = None,
+    material: Optional[str] = None,
+    color: Optional[str] = None,
+    include_aplus: bool = True,
+    secondary_count: int = 7,
+    platforms: Optional[List[str]] = None
+) -> str:
+    """
+    为亚马逊商品图片生成 AI 生图提示词（Midjourney / DALL-E / Stable Diffusion）
+
+    一次性生成整套亚马逊 Listing 图片的 AI 提示词，包含主图、副图和 A+ 内容图。
+    生成的 prompt 可直接粘贴到对应的 AI 生图工具中使用。
+
+    **生成内容：**
+    - 1张主图 prompt（纯白底产品图，符合亚马逊主图政策）
+    - 2-8张副图 prompt（场景图、卖点图、细节图、对比图等）
+    - 3张 A+ 横幅/大图 prompt（品牌故事、卖点宣言、场景氛围）
+    - 每张图同时提供 Midjourney / DALL-E / Stable Diffusion 三种格式
+
+    **使用流程：**
+    1. 调用本工具获取全套 prompt
+    2. 将 prompt 粘贴到 Midjourney (/imagine) 或 ChatGPT (DALL-E) 或 SD WebUI
+    3. AI 生图后，在 Photoshop 中精修（调整白底、添加文字标注等）
+    4. 上传到 Amazon Seller Central
+
+    Args:
+        product_name: 产品名称（必需），如 "便携式蓝牙音箱"
+        product_description: 产品外观描述（可选），如 "圆柱形黑色音箱，顶部有银色按键"
+            提供详细外观描述可以让生图结果更接近真实产品
+        category: 产品类目（可选），如 "电子产品"、"家居用品"、"服装"
+            影响场景图的环境选择
+        selling_points: 核心卖点列表（可选），如 ["IPX7防水", "24小时续航"]
+            会标注在卖点信息图的 prompt 中
+        target_audience: 目标客群（可选），如 "25-35岁户外运动爱好者"
+            影响场景图中的人物和环境
+        brand_style: 品牌风格（可选），如 "简约现代"、"高端商务"
+        material: 产品材质（可选），如 "不锈钢"、"铝合金"、"硅胶"
+        color: 产品主色（可选），如 "哑光黑"、"玫瑰金"、"深空灰"
+        include_aplus: 是否包含 A+ 内容 prompt，默认 True
+        secondary_count: 副图数量，默认 7，范围 2-8
+        platforms: 指定输出哪些平台的 prompt，默认全部输出
+            可选: ["midjourney", "dalle", "stable_diffusion"]
+
+    Returns:
+        JSON格式的全套 AI 生图提示词，每张图包含多平台 prompt
+
+    Examples:
+        - generate_amazon_image_prompts(product_name="蓝牙音箱")
+        - generate_amazon_image_prompts(
+              product_name="无线降噪耳机",
+              product_description="头戴式耳机，银灰色金属头梁，黑色蛋白皮耳罩",
+              category="电子产品",
+              selling_points=["主动降噪", "40小时续航", "蓝牙5.3"],
+              color="银灰色",
+              material="铝合金+蛋白皮",
+              platforms=["midjourney"]
+          )
+    """
+    tools = _get_tools()
+    result = await asyncio.to_thread(
+        tools['amazon'].generate_image_prompts,
+        product_name=product_name,
+        product_description=product_description,
+        category=category,
+        selling_points=selling_points,
+        target_audience=target_audience,
+        brand_style=brand_style,
+        material=material,
+        color=color,
+        include_aplus=include_aplus,
+        secondary_count=secondary_count,
+        platforms=platforms
+    )
+    return json.dumps(result, ensure_ascii=False, indent=2)
+
+
 # ==================== 启动入口 ====================
 
 def run_server(
@@ -1353,6 +1436,7 @@ def run_server(
     print("    27. generate_amazon_image_workflow  - 生成整套商品图片创作工作流")
     print("    28. get_amazon_image_specs          - 获取亚马逊图片规格要求")
     print("    29. generate_amazon_creative_brief  - 生成图片创意简报(Creative Brief)")
+    print("    30. generate_amazon_image_prompts   - 生成 AI 生图提示词(MJ/DALL-E/SD)")
     print("=" * 60)
     print()
 
