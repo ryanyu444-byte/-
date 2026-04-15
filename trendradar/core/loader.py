@@ -336,6 +336,44 @@ def _load_ai_filter_config(config_data: Dict) -> Dict:
     }
 
 
+def _load_video_config(config_data: Dict) -> Dict:
+    """加载视频生成配置"""
+    video = config_data.get("video", {})
+    tts = video.get("tts", {})
+    render = video.get("render", {})
+
+    enabled_env = _get_env_bool("VIDEO_ENABLED")
+
+    return {
+        "ENABLED": enabled_env if enabled_env is not None else video.get("enabled", False),
+        "LANGUAGE": video.get("language", "Chinese"),
+        "STYLE": video.get("style", "professional"),
+        "MAX_SEGMENTS": video.get("max_segments", 8),
+        "OUTPUT_DIR": video.get("output_dir", "output/video"),
+        "KEEP_TEMP": video.get("keep_temp", False),
+        "SCRIPT_PROMPT_FILE": video.get("script_prompt_file", "video_script_prompt.txt"),
+        "TTS": {
+            "VOICE": tts.get("voice", ""),
+            "RATE": tts.get("rate", "+0%"),
+            "VOLUME": tts.get("volume", "+0%"),
+            "PITCH": tts.get("pitch", "+0Hz"),
+        },
+        "RENDER": {
+            "WIDTH": render.get("width", 1920),
+            "HEIGHT": render.get("height", 1080),
+            "FPS": render.get("fps", 24),
+            "BG_COLOR": render.get("bg_color", [18, 18, 24]),
+            "TITLE_COLOR": render.get("title_color", "white"),
+            "SUBTITLE_COLOR": render.get("subtitle_color", "#E0E0E0"),
+            "ACCENT_COLOR": render.get("accent_color", "#4FC3F7"),
+            "FONT": render.get("font", "Noto-Sans-CJK-SC"),
+            "TITLE_FONTSIZE": render.get("title_fontsize", 64),
+            "SUBTITLE_FONTSIZE": render.get("subtitle_fontsize", 42),
+            "WATERMARK": render.get("watermark", "TrendRadar"),
+        },
+    }
+
+
 def _load_filter_config(config_data: Dict) -> Dict:
     """加载筛选策略配置"""
     filter_cfg = config_data.get("filter", {})
@@ -592,6 +630,9 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
 
     # AI 智能筛选配置
     config["AI_FILTER"] = _load_ai_filter_config(config_data)
+
+    # 视频生成配置
+    config["VIDEO"] = _load_video_config(config_data)
 
     # 筛选策略配置
     config["FILTER"] = _load_filter_config(config_data)

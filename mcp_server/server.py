@@ -19,6 +19,7 @@ from .tools.system import SystemManagementTools
 from .tools.storage_sync import StorageSyncTools
 from .tools.article_reader import ArticleReaderTools
 from .tools.notification import NotificationTools
+from .tools.video import VideoTools
 from .utils.date_parser import DateParser
 from .utils.errors import MCPError
 
@@ -41,6 +42,7 @@ def _get_tools(project_root: Optional[str] = None):
         _tools_instances['storage'] = StorageSyncTools(project_root)
         _tools_instances['article'] = ArticleReaderTools(project_root)
         _tools_instances['notification'] = NotificationTools(project_root)
+        _tools_instances['video'] = VideoTools(project_root)
     return _tools_instances
 
 
@@ -1112,6 +1114,61 @@ async def send_notification(
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
+# ==================== 视频工具 ====================
+
+@mcp.tool
+async def list_videos(
+    date: Optional[str] = None,
+    limit: int = 10
+) -> str:
+    """
+    列出已生成的视频文件
+
+    Args:
+        date: 指定日期 (YYYY-MM-DD)，为空则列出所有日期
+        limit: 最多返回数量，默认 10
+
+    Returns:
+        JSON格式的视频文件列表
+
+    Examples:
+        - list_videos()
+        - list_videos(date="2026-04-13")
+    """
+    tools = _get_tools()
+    result = await asyncio.to_thread(
+        tools['video'].list_videos,
+        date=date, limit=limit
+    )
+    return json.dumps(result, ensure_ascii=False, indent=2)
+
+
+@mcp.tool
+async def get_video_config() -> str:
+    """
+    获取当前视频生成配置
+
+    Returns:
+        JSON格式的视频配置信息，包含启用状态、语言、风格、分辨率等
+    """
+    tools = _get_tools()
+    result = await asyncio.to_thread(tools['video'].get_video_config)
+    return json.dumps(result, ensure_ascii=False, indent=2)
+
+
+@mcp.tool
+async def get_latest_video() -> str:
+    """
+    获取最新生成的视频信息
+
+    Returns:
+        JSON格式的最新视频信息，包含路径、大小、时间
+    """
+    tools = _get_tools()
+    result = await asyncio.to_thread(tools['video'].get_latest_video)
+    return json.dumps(result, ensure_ascii=False, indent=2)
+
+
 # ==================== 启动入口 ====================
 
 def run_server(
@@ -1197,6 +1254,11 @@ def run_server(
     print("    24. get_channel_format_guide  - 获取渠道格式化策略指南（提示词）")
     print("    25. get_notification_channels - 获取已配置的通知渠道状态")
     print("    26. send_notification         - 向通知渠道发送消息（自动适配格式）")
+    print()
+    print("    === 视频工具 ===")
+    print("    27. list_videos               - 列出已生成的视频文件")
+    print("    28. get_video_config          - 获取视频生成配置")
+    print("    29. get_latest_video          - 获取最新视频信息")
     print("=" * 60)
     print()
 

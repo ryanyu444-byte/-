@@ -902,6 +902,22 @@ class NewsAnalyzer:
                 frequency_file=self.frequency_file,
             )
 
+        # 视频生成（如果启用）
+        if self.ctx.video_enabled and stats:
+            mode_strategy = self._get_mode_strategy()
+            report_type = mode_strategy["report_type"]
+            video_result = self.ctx.generate_video(
+                stats=stats,
+                rss_stats=rss_items,
+                report_mode=mode,
+                report_type=report_type,
+                ai_analysis=ai_result,
+            )
+            if video_result and video_result.success:
+                print(f"视频已生成: {video_result.video_path}")
+            elif video_result and not video_result.skipped:
+                print(f"视频生成失败: {video_result.error}")
+
         return stats, html_file, ai_result, rss_items
 
     def _send_notification_if_needed(
