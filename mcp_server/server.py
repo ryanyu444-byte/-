@@ -20,6 +20,7 @@ from .tools.storage_sync import StorageSyncTools
 from .tools.article_reader import ArticleReaderTools
 from .tools.notification import NotificationTools
 from .tools.video import VideoTools
+from .tools.amazon_listing import AmazonListingTools
 from .utils.date_parser import DateParser
 from .utils.errors import MCPError
 
@@ -43,6 +44,7 @@ def _get_tools(project_root: Optional[str] = None):
         _tools_instances['article'] = ArticleReaderTools(project_root)
         _tools_instances['notification'] = NotificationTools(project_root)
         _tools_instances['video'] = VideoTools(project_root)
+        _tools_instances['amazon'] = AmazonListingTools(project_root)
     return _tools_instances
 
 
@@ -1143,6 +1145,70 @@ async def list_videos(
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
+# ==================== 亚马逊商品图片工作流工具 ====================
+
+
+@mcp.tool
+async def generate_amazon_image_workflow(
+    product_name: str,
+    category: Optional[str] = None,
+    selling_points: Optional[List[str]] = None,
+    target_audience: Optional[str] = None,
+    brand_style: Optional[str] = None,
+    include_aplus: bool = True,
+    secondary_count: int = 7
+) -> str:
+    """
+    生成亚马逊商品整套页面图片的创作工作流（主图 + 副图 + A+）
+
+    为亚马逊卖家提供完整的商品 Listing 图片创作规划，包含：
+    - 主图拍摄与合规要求
+    - 副图创意方向与内容分配
+    - A+ 页面模块规划
+    - 合规检查清单
+    - 设计风格指南
+
+    **典型使用场景：**
+    - 新品上架前的图片规划
+    - 优化现有 Listing 图片
+    - 交付给设计师/摄影师的工作指引
+
+    Args:
+        product_name: 产品名称（必需），如 "便携式蓝牙音箱"
+        category: 产品类目（可选），如 "电子产品"、"家居用品"、"服装"、"食品"、"美妆个护"、"运动户外"、"玩具"
+        selling_points: 核心卖点列表（可选），如 ["IPX7防水", "24小时续航", "360°环绕音效"]
+        target_audience: 目标客群描述（可选），如 "25-35岁户外运动爱好者"
+        brand_style: 品牌视觉风格（可选），如 "简约现代"、"高端商务"、"活力年轻"
+        include_aplus: 是否包含 A+ 内容规划，默认 True
+        secondary_count: 副图数量，默认 7，范围 2-8
+
+    Returns:
+        JSON格式的完整创作工作流，包含各阶段任务、图片规格、内容规划和合规清单
+
+    Examples:
+        - generate_amazon_image_workflow(product_name="不锈钢保温杯")
+        - generate_amazon_image_workflow(
+              product_name="无线降噪耳机",
+              category="电子产品",
+              selling_points=["主动降噪", "40小时续航", "蓝牙5.3"],
+              target_audience="商务通勤人群",
+              brand_style="简约高端"
+          )
+    """
+    tools = _get_tools()
+    result = await asyncio.to_thread(
+        tools['amazon'].generate_image_workflow,
+        product_name=product_name,
+        category=category,
+        selling_points=selling_points,
+        target_audience=target_audience,
+        brand_style=brand_style,
+        include_aplus=include_aplus,
+        secondary_count=secondary_count
+    )
+    return json.dumps(result, ensure_ascii=False, indent=2)
+
+
 @mcp.tool
 async def get_video_config() -> str:
     """
@@ -1153,6 +1219,35 @@ async def get_video_config() -> str:
     """
     tools = _get_tools()
     result = await asyncio.to_thread(tools['video'].get_video_config)
+
+async def get_amazon_image_specs(
+    image_type: str = "all"
+) -> str:
+    """
+    获取亚马逊各类型图片的规格要求和模板
+
+    查看主图、副图、A+ 内容图片的尺寸要求、格式要求和常见错误。
+
+    Args:
+        image_type: 图片类型，可选值：
+            - "all": 所有类型的规格（默认）
+            - "main": 主图规格
+            - "secondary": 副图规格和创意模板
+            - "aplus": A+ 内容图片规格和模块类型
+
+    Returns:
+        JSON格式的图片规格详情
+
+    Examples:
+        - get_amazon_image_specs()
+        - get_amazon_image_specs(image_type="main")
+        - get_amazon_image_specs(image_type="aplus")
+    """
+    tools = _get_tools()
+    result = await asyncio.to_thread(
+        tools['amazon'].get_image_specs,
+        image_type=image_type
+    )
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
@@ -1166,6 +1261,139 @@ async def get_latest_video() -> str:
     """
     tools = _get_tools()
     result = await asyncio.to_thread(tools['video'].get_latest_video)
+
+async def generate_amazon_creative_brief(
+    product_name: str,
+    category: Optional[str] = None,
+    selling_points: Optional[List[str]] = None,
+    target_audience: Optional[str] = None,
+    brand_style: Optional[str] = None,
+    competitor_urls: Optional[List[str]] = None
+) -> str:
+    """
+    生成亚马逊商品图片创意简报（Creative Brief）
+
+    生成 Markdown 格式的创意简报文档，可直接交付给：
+    - 产品摄影师
+    - 平面设计师
+    - AI 图片生成工具（如 Midjourney / DALL-E）
+    - 外包设计团队
+
+    简报包含主图要求、副图规划表、A+ 模块规划、视觉风格指南。
+
+    Args:
+        product_name: 产品名称（必需）
+        category: 产品类目（可选）
+        selling_points: 核心卖点列表（可选）
+        target_audience: 目标客群描述（可选）
+        brand_style: 品牌视觉风格（可选）
+        competitor_urls: 竞品链接列表（可选），用于参考分析
+
+    Returns:
+        JSON格式的结果，包含 Markdown 格式的完整创意简报
+
+    Examples:
+        - generate_amazon_creative_brief(product_name="筋膜枪")
+        - generate_amazon_creative_brief(
+              product_name="智能手表",
+              category="电子产品",
+              selling_points=["血氧监测", "7天续航", "IP68防水"],
+              brand_style="科技简约"
+          )
+    """
+    tools = _get_tools()
+    result = await asyncio.to_thread(
+        tools['amazon'].get_creative_brief,
+        product_name=product_name,
+        category=category,
+        selling_points=selling_points,
+        target_audience=target_audience,
+        brand_style=brand_style,
+        competitor_urls=competitor_urls
+    )
+    return json.dumps(result, ensure_ascii=False, indent=2)
+
+
+@mcp.tool
+async def generate_amazon_image_prompts(
+    product_name: str,
+    product_description: Optional[str] = None,
+    category: Optional[str] = None,
+    selling_points: Optional[List[str]] = None,
+    target_audience: Optional[str] = None,
+    brand_style: Optional[str] = None,
+    material: Optional[str] = None,
+    color: Optional[str] = None,
+    include_aplus: bool = True,
+    secondary_count: int = 7,
+    platforms: Optional[List[str]] = None
+) -> str:
+    """
+    为亚马逊商品图片生成 AI 生图提示词（Midjourney / DALL-E / Stable Diffusion）
+
+    一次性生成整套亚马逊 Listing 图片的 AI 提示词，包含主图、副图和 A+ 内容图。
+    生成的 prompt 可直接粘贴到对应的 AI 生图工具中使用。
+
+    **生成内容：**
+    - 1张主图 prompt（纯白底产品图，符合亚马逊主图政策）
+    - 2-8张副图 prompt（场景图、卖点图、细节图、对比图等）
+    - 3张 A+ 横幅/大图 prompt（品牌故事、卖点宣言、场景氛围）
+    - 每张图同时提供 Midjourney / DALL-E / Stable Diffusion 三种格式
+
+    **使用流程：**
+    1. 调用本工具获取全套 prompt
+    2. 将 prompt 粘贴到 Midjourney (/imagine) 或 ChatGPT (DALL-E) 或 SD WebUI
+    3. AI 生图后，在 Photoshop 中精修（调整白底、添加文字标注等）
+    4. 上传到 Amazon Seller Central
+
+    Args:
+        product_name: 产品名称（必需），如 "便携式蓝牙音箱"
+        product_description: 产品外观描述（可选），如 "圆柱形黑色音箱，顶部有银色按键"
+            提供详细外观描述可以让生图结果更接近真实产品
+        category: 产品类目（可选），如 "电子产品"、"家居用品"、"服装"
+            影响场景图的环境选择
+        selling_points: 核心卖点列表（可选），如 ["IPX7防水", "24小时续航"]
+            会标注在卖点信息图的 prompt 中
+        target_audience: 目标客群（可选），如 "25-35岁户外运动爱好者"
+            影响场景图中的人物和环境
+        brand_style: 品牌风格（可选），如 "简约现代"、"高端商务"
+        material: 产品材质（可选），如 "不锈钢"、"铝合金"、"硅胶"
+        color: 产品主色（可选），如 "哑光黑"、"玫瑰金"、"深空灰"
+        include_aplus: 是否包含 A+ 内容 prompt，默认 True
+        secondary_count: 副图数量，默认 7，范围 2-8
+        platforms: 指定输出哪些平台的 prompt，默认全部输出
+            可选: ["midjourney", "dalle", "stable_diffusion"]
+
+    Returns:
+        JSON格式的全套 AI 生图提示词，每张图包含多平台 prompt
+
+    Examples:
+        - generate_amazon_image_prompts(product_name="蓝牙音箱")
+        - generate_amazon_image_prompts(
+              product_name="无线降噪耳机",
+              product_description="头戴式耳机，银灰色金属头梁，黑色蛋白皮耳罩",
+              category="电子产品",
+              selling_points=["主动降噪", "40小时续航", "蓝牙5.3"],
+              color="银灰色",
+              material="铝合金+蛋白皮",
+              platforms=["midjourney"]
+          )
+    """
+    tools = _get_tools()
+    result = await asyncio.to_thread(
+        tools['amazon'].generate_image_prompts,
+        product_name=product_name,
+        product_description=product_description,
+        category=category,
+        selling_points=selling_points,
+        target_audience=target_audience,
+        brand_style=brand_style,
+        material=material,
+        color=color,
+        include_aplus=include_aplus,
+        secondary_count=secondary_count,
+        platforms=platforms
+    )
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
@@ -1259,6 +1487,12 @@ def run_server(
     print("    27. list_videos               - 列出已生成的视频文件")
     print("    28. get_video_config          - 获取视频生成配置")
     print("    29. get_latest_video          - 获取最新视频信息")
+
+    print("    === 亚马逊商品图片工作流 ===")
+    print("    27. generate_amazon_image_workflow  - 生成整套商品图片创作工作流")
+    print("    28. get_amazon_image_specs          - 获取亚马逊图片规格要求")
+    print("    29. generate_amazon_creative_brief  - 生成图片创意简报(Creative Brief)")
+    print("    30. generate_amazon_image_prompts   - 生成 AI 生图提示词(MJ/DALL-E/SD)")
     print("=" * 60)
     print()
 
